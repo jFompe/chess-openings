@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chess Opening Explorer</title>
+<style>
+  :root {
+    --bg:        #14141a;
+    --panel:     #1c1c24;
+    --panel-2:   #24242e;
+    --line:      rgba(255,255,255,.08);
+    --text:      #e8e8ee;
+    --muted:     #8d8da0;
+    --accent:    #7cc46a;
+    --light-sq:  #eed7b3;
+    --dark-sq:   #b58863;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app { display: flex; height: 100dvh; }
+
+  /* ============ LEFT — BOARD (60%) ============ */
+  .board-panel {
+    flex: 0 0 60%;
+    max-width: 60%;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: radial-gradient(120% 120% at 30% 0%, #24242f 0%, #0f0f13 70%);
+    --board-size: min(calc(60vw - 48px), calc(100vh - 48px));
+  }
+
+  .board {
+    width: var(--board-size);
+    height: var(--board-size);
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.07);
+  }
+
+  .sq {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+  }
+  .sq.light { background: var(--light-sq); }
+  .sq.dark  { background: var(--dark-sq); }
+
+  /* last-move highlight painted under the piece */
+  .sq.last { box-shadow: inset 0 0 0 100px rgba(255, 214, 79, .35); }
+
+  .piece {
+    position: relative;
+    z-index: 2;
+    line-height: 1;
+    pointer-events: none;
+    font-size: calc(var(--board-size) / 8 * 0.84);
+  }
+  .piece.w {
+    color: #ffffff;
+    -webkit-text-stroke: calc(var(--board-size) / 8 * 0.022) #3a3229;
+    text-shadow: 0 2px 3px rgba(0,0,0,.35);
+  }
+  .piece.b {
+    color: #2b2b2b;
+    text-shadow: 0 2px 3px rgba(0,0,0,.25);
+  }
+  .sq.dest .piece { animation: pop .18s ease-out; }
+  @keyframes pop {
+    from { transform: scale(.82); opacity: .35; }
+    to   { transform: scale(1);   opacity: 1; }
+  }
+
+  .coord {
+    position: absolute;
+    z-index: 1;
+    font-size: calc(var(--board-size) / 8 * 0.2);
+    font-weight: 700;
+    line-height: 1;
+    pointer-events: none;
+    opacity: .85;
+  }
+  .coord.rank { top: 3px; left: 5px; }
+  .coord.file { bottom: 3px; right: 5px; }
+  .sq.light .coord { color: var(--dark-sq); }
+  .sq.dark  .coord { color: var(--light-sq); }
+
+  /* ============ RIGHT — PANEL (40%) ============ */
+  .side-panel {
+    flex: 1 1 40%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--panel);
+    border-left: 1px solid var(--line);
+    overflow: hidden;
+  }
+
+  .side-header {
+    padding: 20px 22px 16px;
+    border-bottom: 1px solid var(--line);
+    flex: 0 0 auto;
+  }
+  .side-header h1 {
+    margin: 0 0 7px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .opening-name {
+    font-size: 20px;
+    font-weight: 650;
+    line-height: 1.25;
+    color: #fff;
+  }
+
+  /* --- history chips --- */
+  .history {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 12px 22px;
+    border-bottom: 1px solid var(--line);
+    max-height: 118px;
+    overflow-y: auto;
+  }
+  .hist-chip {
+    font: inherit;
+    font-size: 13px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    color: var(--muted);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background .14s, color .14s, border-color .14s;
+  }
+  .hist-chip:hover { color: #fff; border-color: rgba(255,255,255,.28); }
+  .hist-chip.current {
+    background: #35502f;
+    border-color: #4f7a45;
+    color: #ddf5d6;
+  }
+
+  /* --- moves list --- */
+  .moves-wrap {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .moves-head {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 16px 22px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .moves-head span:last-child { letter-spacing: .06em; text-transform: none; font-weight: 500; }
+
+  .moves {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 0 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    scrollbar-width: thin;
+    scrollbar-color: #3a3a48 transparent;
+  }
+  .moves::-webkit-scrollbar { width: 8px; }
+  .moves::-webkit-scrollbar-thumb { background: #3a3a48; border-radius: 4px; }
+
+  /* --- a move card: mini board + text --- */
+  .move-btn {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 8px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    animation: fadeUp .2s ease-out both;
+    transition: background .12s, border-color .12s, transform .06s;
+  }
+  .move-btn:hover,
+  .move-btn:focus-visible {
+    background: #2e2e3a;
+    border-color: rgba(124,196,106,.6);
+    outline: none;
+  }
+  .move-btn:active { transform: scale(.995); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(5px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* mini board (also used by the large hover preview) */
+  .mini-board {
+    --mini: 108px;
+    flex: 0 0 auto;
+    width: var(--mini);
+    height: var(--mini);
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(255,255,255,.08), 0 3px 10px rgba(0,0,0,.35);
+  }
+  .mini-board .msq {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .mini-board .msq.light { background: var(--light-sq); }
+  .mini-board .msq.dark  { background: var(--dark-sq); }
+  .mini-board .msq.last  { box-shadow: inset 0 0 0 100px rgba(255,214,79,.35); }
+  .mini-board .msq.dest  { box-shadow: inset 0 0 0 100px rgba(255,214,79,.6); }
+
+  .mini-board .mpiece {
+    position: relative;
+    z-index: 2;
+    line-height: 1;
+    pointer-events: none;
+    font-size: calc(var(--mini) / 8 * 0.92);
+  }
+  .mini-board .mpiece.w {
+    color: #ffffff;
+    text-shadow: 0 0 1.5px rgba(0,0,0,.85), 0 1px 1px rgba(0,0,0,.45);
+  }
+  .mini-board .mpiece.b {
+    color: #1f1f1f;
+    text-shadow: 0 0 1px rgba(255,255,255,.35), 0 1px 1px rgba(0,0,0,.3);
+  }
+
+  /* text next to the preview */
+  .move-main {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .move-san-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+  }
+  .move-num {
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+  }
+  .move-san {
+    font-size: 16px;
+    font-weight: 650;
+    letter-spacing: .01em;
+  }
+  .move-label {
+    font-size: 12.5px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .move-arrow {
+    margin-left: auto;
+    padding-right: 4px;
+    color: var(--accent);
+    opacity: 0;
+    transition: opacity .14s, transform .14s;
+  }
+  .move-btn:hover .move-arrow,
+  .move-btn:focus-visible .move-arrow { opacity: 1; transform: translateX(2px); }
+
+  .empty {
+    padding: 26px 20px;
+    border: 1px dashed rgba(255,255,255,.16);
+    border-radius: 10px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.65;
+    text-align: center;
+  }
+
+  /* ---------- LARGE HOVER PREVIEW ---------- */
+  .preview {
+    position: fixed;
+    z-index: 200;
+    display: none;
+    padding: 10px;
+    border-radius: 14px;
+    background: rgba(16,16,21,.97);
+    border: 1px solid rgba(255,255,255,.13);
+    box-shadow: 0 30px 70px rgba(0,0,0,.72), 0 0 0 1px rgba(0,0,0,.4);
+    pointer-events: none;            /* never steals the mouse */
+    opacity: 0;
+    transition: opacity .1s ease-out;
+  }
+  .preview-board {
+    border-radius: 8px;
+    box-shadow: 0 0 0 1px rgba(255,255,255,.12), 0 6px 18px rgba(0,0,0,.45);
+  }
+  .preview-cap {
+    margin-top: 9px;
+    font-size: 12.5px;
+    line-height: 1.3;
+    color: var(--muted);
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .preview-cap b { color: var(--text); font-weight: 650; }
+
+  /* --- footer --- */
+  .side-footer {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 10px;
+    padding: 14px 22px;
+    border-top: 1px solid var(--line);
+    background: #191921;
+  }
+  .side-footer button {
+    flex: 1;
+    padding: 11px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+    color: var(--text);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .14s, opacity .14s;
+  }
+  .side-footer button:hover:not(:disabled) { background: #2e2e3a; }
+  .side-footer button:disabled { opacity: .32; cursor: default; }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 1200px) {
+    .mini-board { --mini: 92px; }
+  }
+  @media (max-width: 860px) {
+    html, body { overflow: auto; height: auto; }
+    .app { flex-direction: column; height: auto; }
+    .board-panel {
+      flex: 0 0 auto;
+      max-width: none;
+      padding: 14px;
+      --board-size: min(92vw, 58vh);
+    }
+    .side-panel {
+      flex: 0 0 auto;
+      border-left: none;
+      border-top: 1px solid var(--line);
+      min-height: 60vh;
+    }
+    .moves { max-height: none; }
+    .mini-board { --mini: 100px; }
+  }
+  @media (max-width: 520px) {
+    .mini-board { --mini: 84px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- LEFT: board -->
+  <section class="board-panel">
+    <div class="board" id="board"></div>
+  </section>
+
+  <!-- RIGHT: moves -->
+  <aside class="side-panel">
+    <header class="side-header">
+      <h1>Opening Explorer</h1>
+      <div class="opening-name" id="openingName">Starting Position</div>
+    </header>
+
+    <div class="history" id="history"></div>
+
+    <div class="moves-wrap">
+      <div class="moves-head">
+        <span>Possible moves</span>
+        <span id="moveCount"></span>
+      </div>
+      <div class="moves" id="moves"></div>
+    </div>
+
+    <footer class="side-footer">
+      <button id="backBtn">← Back</button>
+      <button id="resetBtn">⟲ Reset</button>
+    </footer>
+  </aside>
+
+</div>
+
+<!-- floating large preview (positioned by JS, never captures the mouse) -->
+<div class="preview" id="preview" aria-hidden="true">
+  <div id="previewFrame"></div>
+  <div class="preview-cap" id="previewCap"></div>
+</div>
+
+<script>
+"use strict";
+
+/* =========================================================
+   1. CHESS BOARD CORE
+   Board = array of 64. Index 0 = a8, index 63 = h1.
+   Uppercase = white, lowercase = black, null = empty.
+   ========================================================= */
+
+const FILES = "abcdefgh";
+const GLYPH = { k:"♚", q:"♛", r:"♜", b:"♝", n:"♞", p:"♟" };
+
+function initialBoard() {
+  const b = new Array(64).fill(null);
+  const back = ["r","n","b","q","k","b","n","r"];
+  for (let i = 0; i < 8; i++) {
+    b[i]      = back[i];               // rank 8 (black)
+    b[8 + i]  = "p";                   // rank 7
+    b[48 + i] = "P";                   // rank 2
+    b[56 + i] = back[i].toUpperCase(); // rank 1 (white)
+  }
+  return b;
+}
+
+function sqIndex(sq) {
+  return (8 - parseInt(sq[1], 10)) * 8 + FILES.indexOf(sq[0]);
+}
+
+/** Apply a UCI move (e2e4 / e7e8q / e1g1) — returns a NEW board. */
+function applyUci(board, uci) {
+  const b      = board.slice();
+  const from   = sqIndex(uci.slice(0, 2));
+  const to     = sqIndex(uci.slice(2, 4));
+  const promo  = uci[4];
+  const piece  = b[from];
+  if (!piece) return b;                       // safety
+
+  const lower  = piece.toLowerCase();
+  const isWhite = piece === piece.toUpperCase();
+
+  b[to] = promo ? (isWhite ? promo.toUpperCase() : promo) : piece;
+  b[from] = null;
+
+  // Castling: king moves two files
+  if (lower === "k" && Math.abs((to % 8) - (from % 8)) === 2) {
+    const row = Math.floor(from / 8) * 8;
+    if (to % 8 === 6) {            // kingside
+      b[row + 5] = b[row + 7];
+      b[row + 7] = null;
+    } else {                       // queenside
+      b[row + 3] = b[row + 0];
+      b[row + 0] = null;
+    }
+  }
+
+  // En passant: pawn moves diagonally onto an empty square
+  if (lower === "p" && (from % 8) !== (to % 8) && !board[to]) {
+    b[Math.floor(from / 8) * 8 + (to % 8)] = null;
+  }
+
+  return b;
+}
+
+/* =========================================================
+   2. OPENING TREE
+   n(label, children)  -> position node
+   m(san, uci, node)   -> move leading to that node
+   ========================================================= */
+
+const n = (label, children) => ({ label, children: children || [] });
+const m = (san, uci, next)  => ({ san, uci, next });
+
+const ROOT = n("Starting Position", [
+
+  /* ------------------------- 1. e4 ------------------------- */
+  m("e4", "e2e4", n("King's Pawn Opening", [
+
+    m("e5", "e7e5", n("Open Game", [
+      m("Nf3", "g1f3", n("King's Knight Opening", [
+        m("Nc6", "b8c6", n("Open Game", [
+          m("Bb5", "f1b5", n("Ruy Lopez", [
+            m("a6", "a7a6", n("Morphy Defense", [
+              m("Ba4", "b5a4", n("Ruy Lopez: Main Line", [
+                m("Nf6", "g8f6", n("Ruy Lopez: Closed", [
+                  m("O-O", "e1g1", n("Ruy Lopez: Closed", [
+                    m("Be7", "f8e7", n("Ruy Lopez: Closed Main Line"))
+                  ]))
+                ])),
+                m("Bc5", "f8c5", n("Ruy Lopez: Classical"))
+              ])),
+              m("Bxc6", "b5c6", n("Exchange Variation", [
+                m("dxc6", "d7c6", n("Ruy Lopez: Exchange"))
+              ]))
+            ])),
+            m("Nf6", "g8f6", n("Berlin Defense", [
+              m("O-O", "e1g1", n("Berlin Defense", [
+                m("Nxe4", "f6e4", n("Berlin: Main Line"))
+              ]))
+            ])),
+            m("Bc5", "f8c5", n("Classical Defense", [
+              m("c3", "c2c3", n("Ruy Lopez: Classical", [
+                m("Nf6", "g8f6", n("Ruy Lopez: Classical"))
+              ]))
+            ]))
+          ])),
+          m("Bc4", "f1c4", n("Italian Game", [
+            m("Bc5", "f8c5", n("Giuoco Piano", [
+              m("c3", "c2c3", n("Giuoco Piano")),
+              m("b4", "b2b4", n("Evans Gambit"))
+            ])),
+            m("Nf6", "g8f6", n("Two Knights Defense", [
+              m("Ng5", "f3g5", n("Two Knights: Main Line", [
+                m("d5", "d7d5", n("Two Knights: Main Line"))
+              ]))
+            ]))
+          ])),
+          m("d4", "d2d4", n("Scotch Game", [
+            m("exd4", "e5d4", n("Scotch Game", [
+              m("Nxd4", "f3d4", n("Scotch Game", [
+                m("Nf6", "g8f6", n("Scotch: Classical"))
+              ]))
+            ]))
+          ])),
+          m("Nc3", "b1c3", n("Three Knights Opening"))
+        ])),
+        m("Nf6", "g8f6", n("Petrov Defense", [
+          m("Nxe5", "f3e5", n("Petrov Defense", [
+            m("d6", "d7d6", n("Petrov: Main Line"))
+          ]))
+        ])),
+        m("d6", "d7d6", n("Philidor Defense", [
+          m("d4", "d2d4", n("Philidor Defense", [
+            m("exd4", "e5d4", n("Philidor: Exchange"))
+          ]))
+        ]))
+      ])),
+      m("Nc3", "b1c3", n("Vienna Game", [
+        m("Nf6", "g8f6", n("Vienna Game"))
+      ])),
+      m("f4", "f2f4", n("King's Gambit", [
+        m("exf4", "e5f4", n("King's Gambit Accepted"))
+      ])),
+      m("Bc4", "f1c4", n("Bishop's Opening", [
+        m("Nf6", "g8f6", n("Bishop's Opening"))
+      ])),
+      m("d4", "d2d4", n("Center Game", [
+        m("exd4", "e5d4", n("Center Game"))
+      ]))
+    ])),
+
+    m("c5", "c7c5", n("Sicilian Defense", [
+      m("Nf3", "g1f3", n("Sicilian: Open", [
+        m("d6", "d7d6", n("Sicilian: Najdorf / Dragon", [
+          m("d4", "d2d4", n("Sicilian: Open", [
+            m("cxd4", "c5d4", n("Sicilian: Open", [
+              m("Nxd4", "f3d4", n("Sicilian: Open", [
+                m("Nf6", "g8f6", n("Sicilian: Open", [
+                  m("Nc3", "b1c3", n("Sicilian: Main Lines", [
+                    m("a6", "a7a6", n("Najdorf Variation")),
+                    m("g6", "g7g6", n("Dragon Variation")),
+                    m("e6", "e7e6", n("Scheveningen Variation"))
+                  ]))
+                ]))
+              ]))
+            ]))
+          ]))
+        ])),
+        m("Nc6", "b8c6", n("Old Sicilian", [
+          m("d4", "d2d4", n("Sicilian: Open", [
+            m("cxd4", "c5d4", n("Sicilian: Open", [
+              m("Nxd4", "f3d4", n("Sicilian: Open", [
+                m("Nf6", "g8f6", n("Sveshnikov Variation", [
+                  m("Nc3", "b1c3", n("Sveshnikov", [
+                    m("e5", "e7e5", n("Sveshnikov Variation"))
+                  ]))
+                ]))
+              ]))
+            ]))
+          ]))
+        ])),
+        m("e6", "e7e6", n("Sicilian: Kan", [
+          m("d4", "d2d4", n("Sicilian: Kan", [
+            m("cxd4", "c5d4", n("Sicilian: Kan", [
+              m("Nxd4", "f3d4", n("Sicilian: Kan", [
+                m("a6", "a7a6", n("Kan Variation"))
+              ]))
+            ]))
+          ]))
+        ]))
+      ])),
+      m("Nc3", "b1c3", n("Closed Sicilian", [
+        m("Nc6", "b8c6", n("Closed Sicilian", [
+          m("g3", "g2g3", n("Closed Sicilian"))
+        ]))
+      ])),
+      m("c3", "c2c3", n("Alapin Variation", [
+        m("d5", "d7d5", n("Alapin Variation", [
+          m("exd5", "e4d5", n("Alapin Variation", [
+            m("Qxd5", "d8d5", n("Alapin: Main Line"))
+          ]))
+        ]))
+      ])),
+      m("d4", "d2d4", n("Smith-Morra Gambit", [
+        m("cxd4", "c5d4", n("Smith-Morra Gambit", [
+          m("c3", "c2c3", n("Smith-Morra Gambit", [
+            m("dxc3", "d4c3", n("Smith-Morra Accepted"))
+          ]))
+        ]))
+      ]))
+    ])),
+
+    m("e6", "e7e6", n("French Defense", [
+      m("d4", "d2d4", n("French Defense", [
+        m("d5", "d7d5", n("French Defense", [
+          m("Nc3", "b1c3", n("French: Classical", [
+            m("Nf6", "g8f6", n("French: Classical", [
+              m("e5", "e4e5", n("Steinitz Variation", [
+                m("Nfd7", "f6d7", n("French: Steinitz"))
+              ]))
+            ])),
+            m("Bb4", "f8b4", n("Winawer Variation"))
+          ])),
+          m("Nd2", "b1d2", n("Tarrasch Variation")),
+          m("e5", "e4e5", n("Advance Variation", [
+            m("c5", "c7c5", n("French: Advance"))
+          ])),
+          m("exd5", "e4d5", n("Exchange Variation", [
+            m("exd5", "e6d5", n("French: Exchange"))
+          ]))
+        ]))
+      ]))
+    ])),
+
+    m("c6", "c7c6", n("Caro-Kann Defense", [
+      m("d4", "d2d4", n("Caro-Kann", [
+        m("d5", "d7d5", n("Caro-Kann", [
+          m("Nc3", "b1c3", n("Caro-Kann: Classical", [
+            m("dxe4", "d5e4", n("Caro-Kann: Classical"))
+          ])),
+          m("e5", "e4e5", n("Caro-Kann: Advance")),
+          m("exd5", "e4d5", n("Caro-Kann: Exchange", [
+            m("cxd5", "c6d5", n("Caro-Kann: Exchange"))
+          ]))
+        ]))
+      ]))
+    ])),
+
+    m("d5", "d7d5", n("Scandinavian Defense", [
+      m("exd5", "e4d5", n("Scandinavian", [
+        m("Qxd5", "d8d5", n("Scandinavian", [
+          m("Nc3", "b1c3", n("Scandinavian: Main Line", [
+            m("Qa5", "d5a5", n("Scandinavian: Main Line"))
+          ]))
+        ]))
+      ]))
+    ])),
+
+    m("Nf6", "g8f6", n("Alekhine Defense", [
+      m("e5", "e4e5", n("Alekhine Defense", [
+        m("Nd5", "f6d5", n("Alekhine: Main Line"))
+      ]))
+    ])),
+
+    m("d6", "d7d6", n("Pirc Defense", [
+      m("d4", "d2d4", n("Pirc Defense", [
+        m("Nf6", "g8f6", n("Pirc Defense", [
+          m("Nc3", "b1c3", n("Pirc: Classical", [
+            m("g6", "g7g6", n("Pirc: Classical"))
+          ]))
+        ]))
+      ]))
+    ])),
+
+    m("g6", "g7g6", n("Modern Defense", [
+      m("d4", "d2d4", n("Modern Defense", [
+        m("Bg7", "f8g7", n("Modern Defense"))
+      ]))
+    ])),
+
+    m("b6", "b7b6", n("Owen's Defense")),
+    m("Nc6", "b8c6", n("Nimzowitsch Defense"))
+  ])),
+
+  /* ------------------------- 1. d4 ------------------------- */
+  m("d4", "d2d4", n("Queen's Pawn Opening", [
+
+    m("d5", "d7d5", n("Closed Game", [
+      m("c4", "c2c4", n("Queen's Gambit", [
+        m("e6", "e7e6", n("Queen's Gambit Declined", [
+          m("Nc3", "b1c3", n("QGD", [
+            m("Nf6", "g8f6", n("QGD: Main Line"))
+          ])),
+          m("Nf3", "g1f3", n("QGD", [
+            m("Nf6", "g8f6", n("QGD: Main Line"))
+          ]))
+        ])),
+        m("c6", "c7c6", n("Slav Defense", [
+          m("Nf3", "g1f3", n("Slav Defense", [
+            m("Nf6", "g8f6", n("Slav: Main Line"))
+          ])),
+          m("Nc3", "b1c3", n("Slav Defense", [
+            m("dxc4", "d5c4", n("Slav: Main Line"))
+          ]))
+        ])),
+        m("dxc4", "d5c4", n("Queen's Gambit Accepted", [
+          m("e3", "e2e3", n("QGA", [
+            m("Nf6", "g8f6", n("QGA: Main Line"))
+          ]))
+        ])),
+        m("Nf6", "g8f6", n("Marshall Defense"))
+      ])),
+      m("Nf3", "g1f3", n("Queen's Pawn", [
+        m("Nf6", "g8f6", n("Queen's Pawn", [
+          m("c4", "c2c4", n("Transposition to QGD"))
+        ]))
+      ])),
+      m("Bf4", "c1f4", n("London System", [
+        m("Nf6", "g8f6", n("London System", [
+          m("e3", "e2e3", n("London System"))
+        ]))
+      ]))
+    ])),
+
+    m("Nf6", "g8f6", n("Indian Defense", [
+      m("c4", "c2c4", n("Indian Defense", [
+        m("e6", "e7e6", n("Nimzo-Indian", [
+          m("Nc3", "b1c3", n("Nimzo-Indian", [
+            m("Bb4", "f8b4", n("Nimzo-Indian Defense"))
+          ]))
+        ])),
+        m("g6", "g7g6", n("King's Indian", [
+          m("Nc3", "b1c3", n("King's Indian", [
+            m("Bg7", "f8g7", n("King's Indian", [
+              m("e4", "e2e4", n("King's Indian", [
+                m("d6", "d7d6", n("King's Indian: Classical"))
+              ]))
+            ]))
+          ]))
+        ])),
+        m("e5", "e7e5", n("Budapest Gambit"))
+      ])),
+      m("Nf3", "g1f3", n("Indian Defense", [
+        m("g6", "g7g6", n("King's Indian Setup", [
+          m("c4", "c2c4", n("King's Indian Setup", [
+            m("Bg7", "f8g7", n("King's Indian Setup"))
+          ]))
+        ]))
+      ]))
+    ])),
+
+    m("e6", "e7e6", n("Dutch Defense (via e6)", [
+      m("c4", "c2c4", n("Dutch Defense", [
+        m("f5", "f7f5", n("Dutch Defense"))
+      ]))
+    ])),
+
+    m("f5", "f7f5", n("Dutch Defense")),
+    m("d6", "d7d6", n("Pirc Setup", [
+      m("e4", "e2e4", n("Transposition to Pirc"))
+    ])),
+    m("c5", "c7c5", n("Benoni Defense")),
+    m("g6", "g7g6", n("Modern Defense"))
+  ])),
+
+  /* ------------------------- 1. c4 ------------------------- */
+  m("c4", "c2c4", n("English Opening", [
+    m("e5", "e7e5", n("English: Reversed Sicilian", [
+      m("Nc3", "b1c3", n("English: Reversed Sicilian", [
+        m("Nf6", "g8f6", n("English: Four Knights"))
+      ]))
+    ])),
+    m("Nf6", "g8f6", n("English: Anglo-Indian", [
+      m("Nc3", "b1c3", n("English: Anglo-Indian", [
+        m("e6", "e7e6", n("English: Anglo-Indian"))
+      ]))
+    ])),
+    m("c5", "c7c5", n("English: Symmetrical", [
+      m("Nf3", "g1f3", n("English: Symmetrical", [
+        m("Nc6", "b8c6", n("English: Symmetrical"))
+      ]))
+    ])),
+    m("e6", "e7e6", n("English: Agincourt", [
+      m("Nf3", "g1f3", n("English", [
+        m("d5", "d7d5", n("English: Anglo-Dutch"))
+      ]))
+    ]))
+  ])),
+
+  /* ------------------------- 1. Nf3 ------------------------ */
+  m("Nf3", "g1f3", n("Zukertort Opening", [
+    m("d5", "d7d5", n("Zukertort", [
+      m("d4", "d2d4", n("Zukertort", [
+        m("Nf6", "g8f6", n("Transposition to QGD"))
+      ]))
+    ])),
+    m("Nf6", "g8f6", n("Zukertort", [
+      m("c4", "c2c4", n("Transposition to English", [
+        m("e6", "e7e6", n("Transposition"))
+      ]))
+    ]))
+  ])),
+
+  /* ---------------------- other first moves ---------------- */
+  m("f4", "f2f4", n("Bird's Opening", [
+    m("d5", "d7d5", n("Bird's Opening"))
+  ])),
+  m("b3", "b2b3", n("Nimzo-Larsen Attack")),
+  m("g3", "g2g3", n("Benko Opening"))
+]);
+
+/* =========================================================
+   3. APP STATE + RENDERING
+   ========================================================= */
+
+const boardEl       = document.getElementById("board");
+const movesEl       = document.getElementById("moves");
+const historyEl     = document.getElementById("history");
+const openingNameEl = document.getElementById("openingName");
+const moveCountEl   = document.getElementById("moveCount");
+const backBtn       = document.getElementById("backBtn");
+const resetBtn      = document.getElementById("resetBtn");
+
+const previewEl      = document.getElementById("preview");
+const previewFrame   = document.getElementById("previewFrame");
+const previewCap     = document.getElementById("previewCap");
+
+/** Moves played from the root, e.g. [ {san,uci,next}, ... ] */
+let path = [];
+
+function currentNode() {
+  let node = ROOT;
+  for (const mv of path) node = mv.next;
+  return node;
+}
+
+function currentBoard() {
+  let b = initialBoard();
+  for (const mv of path) b = applyUci(b, mv.uci);
+  return b;
+}
+
+/* ---------- board rendering ---------- */
+function renderBoard(board, lastMove) {
+  const fromIdx = lastMove ? sqIndex(lastMove.uci.slice(0, 2)) : -1;
+  const toIdx   = lastMove ? sqIndex(lastMove.uci.slice(2, 4)) : -1;
+
+  const frag = document.createDocumentFragment();
+
+  for (let i = 0; i < 64; i++) {
+    const row = (i / 8) | 0;
+    const col = i % 8;
+
+    const sq = document.createElement("div");
+    sq.className = "sq " + ((row + col) % 2 === 0 ? "light" : "dark");
+    if (i === fromIdx) sq.classList.add("last");
+    if (i === toIdx)   sq.classList.add("last", "dest");
+
+    // coordinates
+    if (col === 0) {
+      const r = document.createElement("span");
+      r.className = "coord rank";
+      r.textContent = 8 - row;
+      sq.appendChild(r);
+    }
+    if (row === 7) {
+      const f = document.createElement("span");
+      f.className = "coord file";
+      f.textContent = FILES[col];
+      sq.appendChild(f);
+    }
+
+    const p = board[i];
+    if (p) {
+      const el = document.createElement("span");
+      const isWhite = p === p.toUpperCase();
+      el.className = "piece " + (isWhite ? "w" : "b");
+      el.textContent = GLYPH[p.toLowerCase()];
+      sq.appendChild(el);
+    }
+
+    frag.appendChild(sq);
+  }
+
+  boardEl.replaceChildren(frag);
+}
+
+/* ---------- reusable mini board builder ---------- */
+function buildMiniBoard(board, uci, extraClass) {
+  const fromIdx = sqIndex(uci.slice(0, 2));
+  const toIdx   = sqIndex(uci.slice(2, 4));
+
+  const wrap = document.createElement("span");
+  wrap.className = "mini-board" + (extraClass ? " " + extraClass : "");
+  wrap.setAttribute("aria-hidden", "true");
+
+  const frag = document.createDocumentFragment();
+
+  for (let i = 0; i < 64; i++) {
+    const row = (i / 8) | 0;
+    const col = i % 8;
+
+    const sq = document.createElement("span");
+    sq.className = "msq " + ((row + col) % 2 === 0 ? "light" : "dark");
+    if (i === fromIdx) sq.classList.add("last");
+    if (i === toIdx)   sq.classList.add("last", "dest");
+
+    const p = board[i];
+    if (p) {
+      const el = document.createElement("span");
+      const isWhite = p === p.toUpperCase();
+      el.className = "mpiece " + (isWhite ? "w" : "b");
+      el.textContent = GLYPH[p.toLowerCase()];
+      sq.appendChild(el);
+    }
+
+    frag.appendChild(sq);
+  }
+
+  wrap.appendChild(frag);
+  return wrap;
+}
+
+/* =========================================================
+   4. LARGE HOVER PREVIEW
+   ========================================================= */
+
+let previewToken = 0;
+
+/** Size of the large board, kept reasonable for any viewport. */
+function previewSize() {
+  const byHeight = window.innerHeight * 0.46;
+  const byWidth  = window.innerWidth  * 0.30;
+  return Math.round(Math.min(380, Math.max(190, Math.min(byHeight, byWidth))));
+}
+
+function showPreview(anchorEl, board, mv) {
+  const token = ++previewToken;
+  const size  = previewSize();
+
+  // 1) content
+  const grid = buildMiniBoard(board, mv.uci, "preview-board");
+  grid.style.setProperty("--mini", size + "px");
+  previewFrame.replaceChildren(grid);
+
+  previewCap.replaceChildren();
+  const sanB = document.createElement("b");
+  sanB.textContent = mv.san;
+  previewCap.append(sanB, document.createTextNode("  ·  " + mv.next.label));
+
+  // 2) make it measurable but invisible
+  previewEl.style.width   = (size + 22) + "px";   // 10px padding + 1px border each side
+  previewEl.style.display = "block";
+  previewEl.style.opacity = "0";
+
+  // 3) position next to the card
+  const r  = anchorEl.getBoundingClientRect();
+  const pw = previewEl.offsetWidth;
+  const ph = previewEl.offsetHeight;
+  const GAP = 18;
+  const PAD = 10;
+
+  let left = r.left - pw - GAP;                       // preferred: to the left, over the board
+  if (left < PAD) left = r.right + GAP;               // else: to the right
+  if (left + pw > window.innerWidth - PAD) {          // last resort: clamp inside
+    left = Math.max(PAD, window.innerWidth - pw - PAD);
+  }
+
+  let top = r.top + r.height / 2 - ph / 2;            // vertically centered on the card
+  top = Math.max(PAD, Math.min(top, window.innerHeight - ph - PAD));
+
+  previewEl.style.left = Math.round(left) + "px";
+  previewEl.style.top  = Math.round(top)  + "px";
+
+  // 4) fade in (only if this call is still the latest one)
+  requestAnimationFrame(() => {
+    if (token === previewToken) previewEl.style.opacity = "1";
+  });
+}
+
+function hidePreview() {
+  previewToken++;
+  previewEl.style.display = "none";
+  previewEl.style.opacity = "0";
+  previewFrame.replaceChildren();
+}
+
+/* ---------- history chips ---------- */
+function renderHistory() {
+  const frag = document.createDocumentFragment();
+
+  const start = document.createElement("button");
+  start.className = "hist-chip" + (path.length === 0 ? " current" : "");
+  start.textContent = "Start";
+  start.addEventListener("click", () => { path = []; render(); });
+  frag.appendChild(start);
+
+  path.forEach((mv, i) => {
+    const chip = document.createElement("button");
+    const moveNo = Math.floor(i / 2) + 1;
+    const isWhiteMove = i % 2 === 0;
+    chip.className = "hist-chip" + (i === path.length - 1 ? " current" : "");
+    chip.textContent = (isWhiteMove ? moveNo + ". " : "") + mv.san;
+    chip.addEventListener("click", () => { path = path.slice(0, i + 1); render(); });
+    frag.appendChild(chip);
+  });
+
+  historyEl.replaceChildren(frag);
+  historyEl.scrollTop = historyEl.scrollHeight;
+}
+
+/* ---------- move cards with mini board previews ---------- */
+function renderMoves(node, board) {
+  const count = node.children.length;
+  moveCountEl.textContent = count ? count + (count === 1 ? " option" : " options") : "";
+
+  if (!count) {
+    const div = document.createElement("div");
+    div.className = "empty";
+    div.innerHTML = "End of this line.<br>Use <strong>← Back</strong> to try another option.";
+    movesEl.replaceChildren(div);
+    return;
+  }
+
+  const moveNo = Math.floor(path.length / 2) + 1;
+  const whiteToMove = path.length % 2 === 0;
+
+  const frag = document.createDocumentFragment();
+
+  node.children.forEach((mv, i) => {
+    // board position that WOULD result from this move
+    const after = applyUci(board, mv.uci);
+
+    const btn = document.createElement("button");
+    btn.className = "move-btn";
+    btn.style.animationDelay = (i * 22) + "ms";
+    btn.setAttribute("aria-label", mv.san + ", " + mv.next.label);
+
+    // 1) small board preview
+    btn.appendChild(buildMiniBoard(after, mv.uci));
+
+    // 2) text
+    const main = document.createElement("span");
+    main.className = "move-main";
+
+    const sanRow = document.createElement("span");
+    sanRow.className = "move-san-row";
+
+    const num = document.createElement("span");
+    num.className = "move-num";
+    num.textContent = whiteToMove ? moveNo + "." : moveNo + "…";
+
+    const san = document.createElement("span");
+    san.className = "move-san";
+    san.textContent = mv.san;
+
+    sanRow.append(num, san);
+
+    const label = document.createElement("span");
+    label.className = "move-label";
+    label.textContent = mv.next.label;
+
+    main.append(sanRow, label);
+
+    // 3) arrow
+    const arrow = document.createElement("span");
+    arrow.className = "move-arrow";
+    arrow.textContent = "→";
+
+    btn.append(main, arrow);
+
+    // 4) behaviour
+    btn.addEventListener("mouseenter", () => showPreview(btn, after, mv));
+    btn.addEventListener("mouseleave", hidePreview);
+    btn.addEventListener("focus",      () => showPreview(btn, after, mv));
+    btn.addEventListener("blur",       hidePreview);
+
+    btn.addEventListener("click", () => {
+      hidePreview();
+      path.push(mv);
+      render();
+    });
+
+    frag.appendChild(btn);
+  });
+
+  movesEl.replaceChildren(frag);
+  movesEl.scrollTop = 0;
+}
+
+/* ---------- master render ---------- */
+function render() {
+  hidePreview();
+
+  const node     = currentNode();
+  const board    = currentBoard();
+  const lastMove = path.length ? path[path.length - 1] : null;
+
+  renderBoard(board, lastMove);
+  openingNameEl.textContent = node.label;
+  renderHistory();
+  renderMoves(node, board);
+
+  backBtn.disabled  = path.length === 0;
+  resetBtn.disabled = path.length === 0;
+}
+
+/* ---------- controls ---------- */
+backBtn.addEventListener("click", () => {
+  if (path.length) { path.pop(); render(); }
+});
+resetBtn.addEventListener("click", () => {
+  path = [];
+  render();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowLeft" && path.length) { path.pop(); render(); }
+  if (e.key === "Escape") hidePreview();
+});
+
+/* the floating preview must never be stale */
+movesEl.addEventListener("scroll", hidePreview, { passive: true });
+window.addEventListener("scroll", hidePreview, { passive: true });
+window.addEventListener("resize", hidePreview);
+
+/* ---------- go ---------- */
+render();
+</script>
+</body>
+</html>
