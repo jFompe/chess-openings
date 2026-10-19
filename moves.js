@@ -275,7 +275,7 @@ const ROOT = n("Starting Position", [
               m("Nf3", "e5f3", n("Petrov Defense", [
                 m("Nxe4", "f6e4", n("Petrov Defense", [
                   m("d4", "d2d4", n("Petrov Defense", [
-                    m("d5", "d7d5", n("Petrov Defense", [
+                    m("d5", "d6d5", n("Petrov Defense", [
                       m("Bd3", "f1d3", n("Petrov Defense", [
                         m("Be7", "f8e7", n("Petrov Defense", [
                           m("O-O", "e1g1", n("Petrov Defense", [
@@ -399,7 +399,7 @@ const ROOT = n("Starting Position", [
             ]))
           ]))
         ])),
-        m("Bc4", "f1c4", n("King's Gambit Declined", [
+        m("Bc5", "f8c5", n("King's Gambit Declined", [
           m("Nf6", "g8f6", n("King's Gambit Declined", [
             m("Nf3", "g1f3", n("King's Gambit Declined"))
           ]))
