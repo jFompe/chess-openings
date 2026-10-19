@@ -37,14 +37,82 @@ const ROOT = n("Starting Position", [
                                       m("Bc2", "b3c2", n("Ruy Lopez: Chigorin", [
                                         m("c5", "c7c5", n("Ruy Lopez: Chigorin Main Line"))
                                       ]))
+                                    ])),
+                                    m("Nb8", "c6b8", n("Ruy Lopez: Breyer", [
+                                      m("d4", "d2d4", n("Ruy Lopez: Breyer", [
+                                        m("Nb8", "c6b8", n("Ruy Lopez: Breyer"))
+                                      ]))
+                                    ])),
+                                    m("Bb7", "c8b7", n("Ruy Lopez: Zaitsev", [
+                                      m("d4", "d2d4", n("Ruy Lopez: Zaitsev", [
+                                        m("Re8", "f8e8", n("Ruy Lopez: Zaitsev"))
+                                      ]))
+                                    ])),
+                                    m("Qd7", "d8d7", n("Ruy Lopez: Flohr", [
+                                      m("d4", "d2d4", n("Ruy Lopez: Flohr", [
+                                        m("Re8", "f8e8", n("Ruy Lopez: Flohr"))
+                                      ]))
+                                    ]))
+                                  ]))
+                                ]))
+                              ])),
+                              m("O-O", "e8g8", n("Ruy Lopez: Keres", [
+                                m("c3", "c2c3", n("Ruy Lopez: Keres"))
+                              ]))
+                            ]))
+                          ]))
+                        ])),
+                        m("Bc5", "f8c5", n("Ruy Lopez: Classical", [
+                          m("c3", "c2c3", n("Ruy Lopez: Classical", [
+                            m("Nf6", "g8f6", n("Ruy Lopez: Classical", [
+                              m("d4", "d2d4", n("Ruy Lopez: Classical", [
+                                m("exd4", "e5d4", n("Ruy Lopez: Classical", [
+                                  m("cxd4", "c3d4", n("Ruy Lopez: Classical", [
+                                    m("Bb4", "c5b4", n("Ruy Lopez: Classical", [
+                                      m("Nc3", "b1c3", n("Ruy Lopez: Classical", [
+                                        m("Nxe4", "f6e4", n("Ruy Lopez: Classical", [
+                                          m("O-O", "e1g1", n("Ruy Lopez: Classical Main Line", [
+                                            m("Bxc3", "b4c3", n("Ruy Lopez: Classical Main Line", [
+                                              m("d5", "d4d5", n("Ruy Lopez: Classical Main Line"))
+                                            ]))
+                                          ]))
+                                        ]))
+                                      ]))
                                     ]))
                                   ]))
                                 ]))
                               ]))
                             ]))
                           ]))
-                        ]))
-                      ]))
+                        ])),
+                        m("Nf6", "g8f6", n("Berlin Defense", [
+                          m("O-O", "e1g1", n("Berlin Defense", [
+                            m("Nxe4", "f6e4", n("Berlin Defense", [
+                              m("d4", "d2d4", n("Berlin Defense", [
+                                m("Nd6", "e4d6", n("Berlin Defense", [
+                                  m("Bxc6", "b5c6", n("Berlin Defense", [
+                                    m("dxc6", "d7c6", n("Berlin Defense", [
+                                      m("dxe5", "d4e5", n("Berlin Defense", [
+                                        m("Nf5", "d6f5", n("Berlin Defense", [
+                                          m("Qxd8", "d1d8", n("Berlin: Endgame Line", [
+                                            m("Kxd8", "e8d8", n("Berlin: Main Line"))
+                                          ]))
+                                        ]))
+                                      ]))
+                                    ]))
+                                  ]))
+                                ]))
+                              ]))
+                            ]))
+                          ]))
+                        ])),
+                        m("Bc5", "f8c5", n("Classical Defense", [
+                          m("c3", "c2c3", n("Ruy Lopez: Classical", [
+                            m("Nf6", "g8f6", n("Ruy Lopez: Classical"))
+                          ]))
+                        ])),
+                        m("Nd4", "c6d4", n("Bird Defense"))
+                      ])),
                     ]))
                   ]))
                 ])),
@@ -146,13 +214,19 @@ const ROOT = n("Starting Position", [
                       ]))
                     ]))
                   ]))
-                ]))
+                ])),
+                  m("O-O", "e1g1", n("Giuoco Piano", [
+                    m("d6", "d7d6", n("Giuoco Piano", [
+                      m("d4", "d2d4", n("Giuoco Piano"))
+                    ]))
+                  ]))
               ])),
               m("b4", "b2b4", n("Evans Gambit", [
                 m("Bxb4", "c5b4", n("Evans Gambit", [
                   m("c3", "c2c3", n("Evans Gambit", [
                     m("Ba5", "b4a5", n("Evans Gambit", [
-                      m("d4", "d2d4", n("Evans Gambit Accepted"))
+                      m("d4", "d2d4", n("Evans Gambit Accepted")),
+                      m("Bc5", "f8c5", n("Evans Gambit Declined"))
                     ]))
                   ]))
                 ]))
@@ -488,6 +562,24 @@ const ROOT = n("Starting Position", [
                         ]))
                       ]))
                     ])),
+                      m("Bc4", "f1c4", n("Najdorf: Sozin", [
+                        m("e6", "e7e6", n("Najdorf: Sozin", [
+                          m("Bb3", "c4b3", n("Najdorf: Sozin", [
+                            m("b5", "b7b5", n("Najdorf: Sozin Main Line"))
+                          ]))
+                        ]))
+                      ])),
+                      m("Bb3", "c4b3", n("Najdorf: Richter-Rauzer", [
+                        m("Nc6", "b8c6", n("Najdorf: Richter-Rauzer", [
+                          m("f3", "f2f3", n("Najdorf: Richter-Rauzer", [
+                            m("Be7", "f8e7", n("Najdorf: Richter-Rauzer", [
+                              m("Qd2", "d1d2", n("Najdorf: Richter-Rauzer", [
+                                m("O-O", "e8g8", n("Najdorf: Richter-Rauzer Main Line"))
+                              ]))
+                            ]))
+                          ]))
+                        ]))
+                      ])),
 
                     /* --- Dragon --- */
                     m("g6", "g7g6", n("Dragon Variation", [
